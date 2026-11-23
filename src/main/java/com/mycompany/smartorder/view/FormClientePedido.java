@@ -8,7 +8,6 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
-
 import com.mycompany.smartorder.excepciones.ValidacionException;
 import com.mycompany.smartorder.model.*;
 import java.awt.*;
@@ -20,6 +19,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class FormClientePedido extends JFrame {
+
     private JTable tablaResumen;
     private DefaultTableModel modeloResumen;
     private JButton btnContinuar;
@@ -298,10 +298,10 @@ public class FormClientePedido extends JFrame {
 
         if (mesaActual.getProductosPedido().isEmpty()) {
             JOptionPane.showMessageDialog(
-                this,
-                "La Mesa #" + mesaActual.getNumeroMesa() + " no tiene productos en el resumen.",
-                "Pedido vacío",
-                JOptionPane.WARNING_MESSAGE
+                    this,
+                    "La Mesa #" + mesaActual.getNumeroMesa() + " no tiene productos en el resumen.",
+                    "Pedido vacío",
+                    JOptionPane.WARNING_MESSAGE
             );
             return;
         }
@@ -328,18 +328,18 @@ public class FormClientePedido extends JFrame {
             actualizarTablaResumen();
 
             JOptionPane.showMessageDialog(
-                this,
-                "Pedido #" + nuevoId + " (" + tipoPedido + ") enviado a cocina para la Mesa #"
-                        + mesaActual.getNumeroMesa() + ".",
-                "Enviado",
-                JOptionPane.INFORMATION_MESSAGE
+                    this,
+                    "Pedido #" + nuevoId + " (" + tipoPedido + ") enviado a cocina para la Mesa #"
+                    + mesaActual.getNumeroMesa() + ".",
+                    "Enviado",
+                    JOptionPane.INFORMATION_MESSAGE
             );
         } catch (ValidacionException ex) {
             JOptionPane.showMessageDialog(
-                this,
-                ex.getMessage(),
-                "Error de validación",
-                JOptionPane.ERROR_MESSAGE
+                    this,
+                    ex.getMessage(),
+                    "Error de validación",
+                    JOptionPane.ERROR_MESSAGE
             );
         }
     }
@@ -391,10 +391,10 @@ public class FormClientePedido extends JFrame {
                 actualizarTablaResumen();
             } else {
                 JOptionPane.showMessageDialog(
-                    this,
-                    "Por favor, seleccione un producto de la tabla.",
-                    "Aviso",
-                    JOptionPane.WARNING_MESSAGE
+                        this,
+                        "Por favor, seleccione un producto de la tabla.",
+                        "Aviso",
+                        JOptionPane.WARNING_MESSAGE
                 );
             }
         });
@@ -432,7 +432,7 @@ public class FormClientePedido extends JFrame {
             });
         }
         lblTotalPagar.setText(
-            String.format("Total a Pagar (Mesa #%02d): ₡%.2f", mesaActual.getNumeroMesa(), mesaActual.calcularTotal())
+                String.format("Total a Pagar (Mesa #%02d): ₡%.2f", mesaActual.getNumeroMesa(), mesaActual.calcularTotal())
         );
     }
 
@@ -445,13 +445,13 @@ public class FormClientePedido extends JFrame {
         }
 
         String seleccion = (String) JOptionPane.showInputDialog(
-            this,
-            "Seleccione la mesa:",
-            "Cambiar Mesa",
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            nombresMesas,
-            nombresMesas[mesaSeleccionadaIndex]
+                this,
+                "Seleccione la mesa:",
+                "Cambiar Mesa",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                nombresMesas,
+                nombresMesas[mesaSeleccionadaIndex]
         );
 
         if (seleccion != null) {

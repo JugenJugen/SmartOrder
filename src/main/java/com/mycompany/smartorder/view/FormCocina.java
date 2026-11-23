@@ -8,13 +8,13 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
-
 import com.mycompany.smartorder.model.*;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class FormCocina extends JFrame {
+
     private JTabbedPane tabEstadosCocina;
     private JTable tablaPendientes, tablaEnPreparacion, tablaListos, tablaEntregados;
     private DefaultTableModel modeloPendientes, modeloEnPreparacion, modeloListos, modeloEntregados;
@@ -89,16 +89,16 @@ public class FormCocina extends JFrame {
         tabEstadosCocina.setBorder(BorderFactory.createEmptyBorder(10, 12, 12, 12));
 
         tabEstadosCocina.add(
-            "Pendientes",
-            crearPanelEstado(tablaPendientes, "En preparación", "Marcar En Preparación", COLOR_NARANJA)
+                "Pendientes",
+                crearPanelEstado(tablaPendientes, "En preparación", "Marcar En Preparación", COLOR_NARANJA)
         );
         tabEstadosCocina.add(
-            "En Preparación",
-            crearPanelEstado(tablaEnPreparacion, "Listo", "Marcar Listo", COLOR_AZUL)
+                "En Preparación",
+                crearPanelEstado(tablaEnPreparacion, "Listo", "Marcar Listo", COLOR_AZUL)
         );
         tabEstadosCocina.add(
-            "Listos",
-            crearPanelEstado(tablaListos, "Entregado", "Marcar Entregado", COLOR_VERDE)
+                "Listos",
+                crearPanelEstado(tablaListos, "Entregado", "Marcar Entregado", COLOR_VERDE)
         );
 
         JPanel panelEntregados = new JPanel(new BorderLayout());
@@ -207,10 +207,10 @@ public class FormCocina extends JFrame {
         int fila = tabla.getSelectedRow();
         if (fila == -1) {
             JOptionPane.showMessageDialog(
-                this,
-                "Seleccione un pedido de la tabla para cambiar su estado.",
-                "Aviso",
-                JOptionPane.WARNING_MESSAGE
+                    this,
+                    "Seleccione un pedido de la tabla para cambiar su estado.",
+                    "Aviso",
+                    JOptionPane.WARNING_MESSAGE
             );
             return;
         }

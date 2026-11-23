@@ -8,10 +8,10 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
-
 import com.mycompany.smartorder.excepciones.ValidacionException;
 import com.mycompany.smartorder.model.Categoria;
 import com.mycompany.smartorder.model.Mesa;
+import com.mycompany.smartorder.model.Pedido;
 import com.mycompany.smartorder.model.Producto;
 import com.mycompany.smartorder.model.Usuario;
 import java.awt.*;
@@ -168,6 +168,8 @@ public class FormAdmin extends JFrame implements Serializable {
 
         JMenuItem itemCliente = new JMenuItem("Vista Cliente (Pedidos)");
         JMenuItem itemCocina = new JMenuItem("Vista Cocina");
+        JMenuItem itemSeguimiento = new JMenuItem("Seguimiento de Pedidos");
+        JMenuItem itemAuditoria = new JMenuItem("Auditoría y Logs");
 
         itemCliente.addActionListener(e -> {
             FormClientePedido cliente = new FormClientePedido();
@@ -184,9 +186,25 @@ public class FormAdmin extends JFrame implements Serializable {
             dispose();
         });
 
+        itemSeguimiento.addActionListener(e -> {
+            FormPedido seg = new FormPedido();
+            seg.setVisible(true);
+            seg.toFront();
+        });
+
+        itemAuditoria.addActionListener(e -> {
+            FormAuditoriaLogs aud = new FormAuditoriaLogs();
+            aud.setVisible(true);
+            aud.toFront();
+        });
+
         menuNavegacion.add(itemCliente);
         menuNavegacion.add(itemCocina);
+        menuNavegacion.add(itemSeguimiento);
+        menuNavegacion.add(itemAuditoria);
         menuBar.add(menuNavegacion);
+
+        FormAuditoriaLogs.registrarEvento("INFO", "Admin", "Barra de navegación de administración inicializada.");
         return menuBar;
     }
 
@@ -269,10 +287,15 @@ public class FormAdmin extends JFrame implements Serializable {
             lblTituloSeccionProd.setText("Productos - " + categoria);
         }
 
-        if ("Bebidas".equals(categoria)) resaltarBotonLateral(btnCatBebidas);
-        else if ("Entradas".equals(categoria)) resaltarBotonLateral(btnCatEntradas);
-        else if ("Platos Fuertes".equals(categoria)) resaltarBotonLateral(btnCatPlatos);
-        else if ("Postres".equals(categoria)) resaltarBotonLateral(btnCatPostres);
+        if ("Bebidas".equals(categoria)) {
+            resaltarBotonLateral(btnCatBebidas);
+        } else if ("Entradas".equals(categoria)) {
+            resaltarBotonLateral(btnCatEntradas);
+        } else if ("Platos Fuertes".equals(categoria)) {
+            resaltarBotonLateral(btnCatPlatos);
+        } else if ("Postres".equals(categoria)) {
+            resaltarBotonLateral(btnCatPostres);
+        }
 
         cargarTablaProductos();
         cardLayout.show(panelCards, "PRODUCTOS");
@@ -385,8 +408,8 @@ public class FormAdmin extends JFrame implements Serializable {
         tarjeta.setBackground(COLOR_BLANCO);
         tarjeta.setPreferredSize(new Dimension(410, 445));
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
-            new TitledBorder(BorderFactory.createLineBorder(COLOR_BORDE, 1), "Datos del Producto"),
-            new EmptyBorder(14, 18, 14, 18)
+                new TitledBorder(BorderFactory.createLineBorder(COLOR_BORDE, 1), "Datos del Producto"),
+                new EmptyBorder(14, 18, 14, 18)
         ));
 
         JLabel lblNombre = crearLabelCampo("Nombre");
@@ -536,7 +559,9 @@ public class FormAdmin extends JFrame implements Serializable {
     }
 
     private void cargarTablaProductos() {
-        if (modeloProductos == null) return;
+        if (modeloProductos == null) {
+            return;
+        }
         modeloProductos.setRowCount(0);
 
         List<Producto> filtrados = new ArrayList<>();
@@ -636,7 +661,9 @@ public class FormAdmin extends JFrame implements Serializable {
     }
 
     private void cargarTablaEmpleados() {
-        if (modeloEmpleados == null) return;
+        if (modeloEmpleados == null) {
+            return;
+        }
         modeloEmpleados.setRowCount(0);
 
         for (Usuario u : LISTA_EMPLEADOS) {
@@ -715,7 +742,9 @@ public class FormAdmin extends JFrame implements Serializable {
     }
 
     private void cargarTablaMesas() {
-        if (modeloMesas == null) return;
+        if (modeloMesas == null) {
+            return;
+        }
         modeloMesas.setRowCount(0);
 
         for (Mesa m : LISTA_MESAS) {
@@ -744,6 +773,12 @@ public class FormAdmin extends JFrame implements Serializable {
         btn.setFocusPainted(false);
         btn.setPreferredSize(new Dimension(170, 36));
         return btn;
+    }
+
+    private static final List<Pedido> LISTA_PEDIDOS = new ArrayList<>();
+
+    public static List<Pedido> getPedidos() {
+        return LISTA_PEDIDOS;
     }
 
     public static void main(String[] args) {
