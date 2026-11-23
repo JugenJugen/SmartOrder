@@ -8,14 +8,13 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
-
 import com.mycompany.smartorder.model.Usuario;
 import java.awt.*;
 import java.util.Arrays;
 import javax.swing.*;
 
-
 public class FormLogin extends JFrame {
+
     private JTextField txtEmail;
     private JPasswordField txtContrasena;
     private JButton btnIniciarSesion;
@@ -90,10 +89,10 @@ public class FormLogin extends JFrame {
 
         if (usuario.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(
-                this,
-                "Por favor, complete todos los campos.",
-                "Advertencia",
-                JOptionPane.WARNING_MESSAGE
+                    this,
+                    "Por favor, complete todos los campos.",
+                    "Advertencia",
+                    JOptionPane.WARNING_MESSAGE
             );
             return;
         }
@@ -132,19 +131,19 @@ public class FormLogin extends JFrame {
         }
 
         JOptionPane.showMessageDialog(
-            this,
-            "Credenciales incorrectas o usuario inactivo.",
-            "Error de autenticación",
-            JOptionPane.ERROR_MESSAGE
+                this,
+                "Credenciales incorrectas o usuario inactivo.",
+                "Error de autenticación",
+                JOptionPane.ERROR_MESSAGE
         );
     }
 
     private void abrirVistaPorRol(String rol, String mensajeBienvenida) {
         JOptionPane.showMessageDialog(
-            this,
-            "¡Acceso concedido! " + mensajeBienvenida,
-            "Éxito",
-            JOptionPane.INFORMATION_MESSAGE
+                this,
+                "¡Acceso concedido! " + mensajeBienvenida,
+                "Éxito",
+                JOptionPane.INFORMATION_MESSAGE
         );
 
         String rolNormalizado = (rol != null) ? rol.trim().toLowerCase() : "";
