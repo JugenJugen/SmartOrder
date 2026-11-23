@@ -8,7 +8,6 @@ package com.mycompany.smartorder;
  *
  * @author angel
  */
-
 import com.mycompany.smartorder.view.FormLogin;
 import javax.swing.SwingUtilities;
 
