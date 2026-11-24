@@ -8,7 +8,8 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
-import com.mycompany.smartorder.excepciones.ValidacionException;
+import com.mycompany.smartorder.client.Response;
+import com.mycompany.smartorder.controller.PedidoClienteController;
 import com.mycompany.smartorder.model.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -31,6 +32,7 @@ public class FormClientePedido extends JFrame {
     private JTextField txtObservacion;
     private final List<JLabel> etiquetasMesa = new ArrayList<>();
     private int mesaSeleccionadaIndex = 0;
+    private PedidoClienteController controlador;
 
     public FormClientePedido() {
         setTitle("SmartOrder - Vista de Clientes / Toma de Pedidos");
@@ -202,6 +204,15 @@ public class FormClientePedido extends JFrame {
 
         actualizarEtiquetasMesa();
         actualizarTablaResumen();
+        
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                if (controlador != null) {
+                    controlador.cerrar();
+                }
+            }
+        });
     }
 
     private List<Mesa> obtenerMesasDisponibles() {
@@ -220,16 +231,6 @@ public class FormClientePedido extends JFrame {
             mesaSeleccionadaIndex = 0;
         }
         return mesas.get(mesaSeleccionadaIndex);
-    }
-
-    private int generarSiguienteIdPedido() {
-        int maxId = 0;
-        for (Pedido p : GestorPedidos.getPedidos()) {
-            if (p.getId() > maxId) {
-                maxId = p.getId();
-            }
-        }
-        return maxId + 1;
     }
 
     private Object[][] obtenerDatosPorCategoria(String nombreCategoria) {
@@ -297,51 +298,46 @@ public class FormClientePedido extends JFrame {
         Mesa mesaActual = obtenerMesaActual();
 
         if (mesaActual.getProductosPedido().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "La Mesa #" + mesaActual.getNumeroMesa() + " no tiene productos en el resumen.",
-                    "Pedido vacío",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    "Pedido vacío", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (controlador == null) {
+            JOptionPane.showMessageDialog(this, "Aún no hay conexión con el servidor.",
+                    "Sin conexión", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         String tipoPedido = cmbTipoPedido.getSelectedItem().toString();
         String observacion = txtObservacion.getText().trim();
+        List<ItemPedido> items = new ArrayList<>(mesaActual.getProductosPedido());
 
-        int nuevoId = generarSiguienteIdPedido();
-        Pedido nuevoPedido = new Pedido(nuevoId, mesaActual, null, tipoPedido);
+        new SwingWorker<Integer, Void>() {
+            @Override
+            protected Integer doInBackground() throws Exception {
+                return controlador.enviarPedido(mesaActual.getNumeroMesa(), tipoPedido, observacion, items);
+            }
 
-        for (ItemPedido item : mesaActual.getProductosPedido()) {
-            Producto producto = new Producto(item.getNombre(), item.getPrecioUnitario());
-            producto.setId(nuevoId);
-            nuevoPedido.agregarDetalle(new DetallePedido(producto, item.getCantidad(), observacion));
-        }
-
-        try {
-            nuevoPedido.validar();
-            GestorPedidos.agregarPedido(nuevoPedido);
-
-            mesaActual.limpiarPedido();
-            txtObservacion.setText("");
-            cmbTipoPedido.setSelectedIndex(0);
-            actualizarTablaResumen();
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Pedido #" + nuevoId + " (" + tipoPedido + ") enviado a cocina para la Mesa #"
-                    + mesaActual.getNumeroMesa() + ".",
-                    "Enviado",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-        } catch (ValidacionException ex) {
-            JOptionPane.showMessageDialog(
-                    this,
-                    ex.getMessage(),
-                    "Error de validación",
-                    JOptionPane.ERROR_MESSAGE
-            );
-        }
+            @Override
+            protected void done() {
+                try {
+                    int id = get();
+                    mesaActual.limpiarPedido();
+                    txtObservacion.setText("");
+                    cmbTipoPedido.setSelectedIndex(0);
+                    actualizarTablaResumen();
+                    JOptionPane.showMessageDialog(FormClientePedido.this,
+                            "Pedido #" + id + " (" + tipoPedido + ") enviado a cocina para la Mesa #"
+                                    + mesaActual.getNumeroMesa() + ".",
+                            "Enviado", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(FormClientePedido.this,
+                            "No se pudo enviar el pedido:\n" + ex.getCause().getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
 
     private JPanel crearPanelCategoria(Object[][] datosProductos) {
@@ -478,8 +474,50 @@ public class FormClientePedido extends JFrame {
     }
 
     public static void main(String[] args) {
+        String tipo = args.length > 0 ? args[0] : "MESA";
+        int numero = args.length > 1 ? Integer.parseInt(args[1]) : 1;
         SwingUtilities.invokeLater(() -> {
-            new FormClientePedido().setVisible(true);
+            FormClientePedido f = new FormClientePedido();
+            f.conectarPunto(tipo, numero);
+            f.setVisible(true);
         });
     }
+    
+    private void conectarPunto(String tipo, int numero) {
+    new SwingWorker<PedidoClienteController, Void>() {
+        @Override
+        protected PedidoClienteController doInBackground() throws Exception {
+            return new PedidoClienteController("localhost", 5555, tipo, numero);
+        }
+
+        @Override
+        protected void done() {
+            try {
+                controlador = get();
+                if ("MESA".equals(tipo)) {
+                List<Mesa> mesas = obtenerMesasDisponibles();
+                for (int i = 0; i < mesas.size(); i++) {
+                    if (mesas.get(i).getNumeroMesa() == numero) {
+                        mesaSeleccionadaIndex = i;
+                        break;
+                    }
+                }
+            }
+                controlador.setOnEvento(ev -> SwingUtilities.invokeLater(() -> manejarEvento(ev)));
+                setTitle("SmartOrder - " + tipo + " " + numero);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(FormClientePedido.this,
+                        "No se pudo conectar al servidor:\n" + ex.getCause().getMessage(),
+                        "Error de conexión", JOptionPane.ERROR_MESSAGE);
+                dispose();
+            }
+        }
+    }.execute();
 }
+
+    private void manejarEvento(Response ev) {
+        System.out.println("Evento recibido: " + ev.getMessage() + " -> " + ev.getData());
+    }    
+}
+
+
