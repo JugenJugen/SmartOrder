@@ -10,4 +10,12 @@
         <maven.compiler.release>17</maven.compiler.release>
         <exec.mainClass>com.mycompany.smartorder.Entida</exec.mainClass>
     </properties>
+    <dependencies>
+        <!-- Driver JDBC de SQL Server -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>12.8.1.jre11</version>
+        </dependency>
+    </dependencies>
 </project>
