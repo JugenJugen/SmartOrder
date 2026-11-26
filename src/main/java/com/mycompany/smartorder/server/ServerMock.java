@@ -120,7 +120,8 @@ public class ServerMock {
                         pedido.put("mesa", "MESA".equals(tipoPunto) ? numeroPunto : 0);
                         pedido.put("tipoPedido", p.get("tipoPedido"));
                         pedido.put("observacion", p.get("observacion"));
-                        pedido.put("items", p.get("items"));
+                        Object itemsRecibidos = p.containsKey("lista") ? p.get("lista") : p.get("items");
+                        pedido.put("items", itemsRecibidos);
                         pedido.put("estado", "Recibido");
                         pedidos.put(nuevo, pedido);
                         difundir(evento("pedidoNuevo", null, pedido));

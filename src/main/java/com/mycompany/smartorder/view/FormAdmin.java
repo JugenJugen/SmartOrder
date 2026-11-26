@@ -8,27 +8,24 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
+import com.mycompany.smartorder.dao.MesaDAO;
+import com.mycompany.smartorder.dao.ProductoDAO;
+import com.mycompany.smartorder.dao.UsuarioDAO;
 import com.mycompany.smartorder.excepciones.ValidacionException;
 import com.mycompany.smartorder.model.Categoria;
 import com.mycompany.smartorder.model.Mesa;
-import com.mycompany.smartorder.model.Pedido;
 import com.mycompany.smartorder.model.Producto;
 import com.mycompany.smartorder.model.Usuario;
 import java.awt.*;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 
-public class FormAdmin extends JFrame implements Serializable {
-
-    private static final long serialVersionUID = 1L;
+public class FormAdmin extends JFrame {
 
     private static final Color COLOR_FONDO = new Color(245, 247, 250);
     private static final Color COLOR_BLANCO = Color.WHITE;
@@ -36,6 +33,18 @@ public class FormAdmin extends JFrame implements Serializable {
     private static final Color COLOR_OSCURO = new Color(33, 43, 54);
     private static final Color COLOR_SELECCION = new Color(232, 237, 243);
     private static final Color COLOR_BORDE = new Color(210, 216, 224);
+
+    static Iterable<Usuario> getEmpleados() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    static List<Mesa> getMesas() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    private final ProductoDAO productoDAO = new ProductoDAO();
+    private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+    private final MesaDAO mesaDAO = new MesaDAO();
 
     private CardLayout cardLayout;
     private JPanel panelCards;
@@ -47,12 +56,14 @@ public class FormAdmin extends JFrame implements Serializable {
     private DefaultTableModel modeloProductos;
     private JTable tablaProductos;
     private JLabel lblTituloSeccionProd;
+    private List<Producto> productosCache = new ArrayList<>();
 
     private Producto productoEditando = null;
     private JLabel lblTituloFormProd;
     private JTextField txtFormNombreProd;
     private JTextArea txtFormDescProd;
     private JTextField txtFormPrecioProd;
+    private JTextField txtFormStockProd;
     private JComboBox<String> cmbFormCategoriaProd;
     private JButton btnGuardarFormProd;
 
@@ -62,17 +73,9 @@ public class FormAdmin extends JFrame implements Serializable {
     private DefaultTableModel modeloMesas;
     private JTable tablaMesas;
 
-    private static final List<Producto> LISTA_PRODUCTOS = new ArrayList<>();
-    private static final List<Usuario> LISTA_EMPLEADOS = new ArrayList<>();
-    private static final List<Mesa> LISTA_MESAS = new ArrayList<>();
-
-    static {
-        cargarDatosIniciales();
-    }
-
     public FormAdmin() {
         setTitle("SmartOrder - Administración");
-        setSize(1100, 700);
+        setSize(1100, 720);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -95,71 +98,6 @@ public class FormAdmin extends JFrame implements Serializable {
         mostrarCategoriaProductos("Entradas");
         cargarTablaEmpleados();
         cargarTablaMesas();
-    }
-
-    public static List<Producto> getProductos() {
-        return LISTA_PRODUCTOS;
-    }
-
-    public static List<Usuario> getEmpleados() {
-        return LISTA_EMPLEADOS;
-    }
-
-    public static List<Mesa> getMesas() {
-        return LISTA_MESAS;
-    }
-
-    private static void cargarDatosIniciales() {
-        if (LISTA_PRODUCTOS.isEmpty()) {
-            Categoria bebidas = new Categoria(1, "Bebidas");
-            Categoria entradas = new Categoria(2, "Entradas");
-            Categoria platos = new Categoria(3, "Platos Fuertes");
-            Categoria postres = new Categoria(4, "Postres");
-
-            LISTA_PRODUCTOS.add(crearProducto(1, "Limonada Natural", "Bebida refrescante de limón natural", 1500.0, true, 25, bebidas));
-            LISTA_PRODUCTOS.add(crearProducto(2, "Té Frío", "Té frío natural de durazno o limón", 1500.0, true, 20, bebidas));
-
-            LISTA_PRODUCTOS.add(crearProducto(3, "Bruschettas de tomate y albahaca", "Pan tostado con cubos de tomate fresco, albahaca picada, aceite de oliva y sal", 4000.0, true, 15, entradas));
-            LISTA_PRODUCTOS.add(crearProducto(4, "Dedos de Queso", "Queso gouda empanizado acompañado de salsa marinara", 3500.0, true, 18, entradas));
-
-            LISTA_PRODUCTOS.add(crearProducto(5, "Pasta Carbonara", "Pasta con salsa cremosa, tocino crujiente y parmesano", 6500.0, true, 12, platos));
-            LISTA_PRODUCTOS.add(crearProducto(6, "Lomo Saltado", "Trocitos de lomo salteados con cebolla y tomate", 7500.0, true, 10, platos));
-
-            LISTA_PRODUCTOS.add(crearProducto(7, "Tres Leches", "Tradicional pastel esponjoso bañado en tres leches", 3000.0, true, 14, postres));
-            LISTA_PRODUCTOS.add(crearProducto(8, "Flan de Caramelo", "Flan casero con salsa dulce de caramelo", 2800.0, true, 16, postres));
-        }
-
-        if (LISTA_EMPLEADOS.isEmpty()) {
-            LISTA_EMPLEADOS.add(new Usuario(123456789, "María Salas", "maria@smartorder.com", "1234", "Atención", true));
-            LISTA_EMPLEADOS.add(new Usuario(145662098, "Mariela Fuentes", "mariela@smartorder.com", "1234", "Cocina", true));
-            LISTA_EMPLEADOS.add(new Usuario(147996223, "Alejandro Gutiérrez", "alejandro@smartorder.com", "1234", "Cocina", true));
-        }
-
-        if (LISTA_MESAS.isEmpty()) {
-            LISTA_MESAS.add(new Mesa(1, 4, "Disponible"));
-            LISTA_MESAS.add(new Mesa(2, 8, "Disponible"));
-            LISTA_MESAS.add(new Mesa(3, 6, "Disponible"));
-        }
-    }
-
-    private static Producto crearProducto(int id, String nombre, String desc, double precio, boolean disp, int stock, Categoria cat) {
-        Producto p = new Producto(nombre, precio);
-        p.setId(id);
-        p.setDescripcion(desc);
-        p.setDisponibilidad(disp);
-        p.setStock(stock);
-        p.setCategoria(cat);
-        return p;
-    }
-
-    private static int generarSiguienteIdProducto() {
-        int maxId = 0;
-        for (Producto p : LISTA_PRODUCTOS) {
-            if (p.getId() > maxId) {
-                maxId = p.getId();
-            }
-        }
-        return maxId + 1;
     }
 
     private JMenuBar crearBarraNavegacion() {
@@ -203,8 +141,6 @@ public class FormAdmin extends JFrame implements Serializable {
         menuNavegacion.add(itemSeguimiento);
         menuNavegacion.add(itemAuditoria);
         menuBar.add(menuNavegacion);
-
-        FormAuditoriaLogs.registrarEvento("INFO", "Admin", "Barra de navegación de administración inicializada.");
         return menuBar;
     }
 
@@ -323,7 +259,7 @@ public class FormAdmin extends JFrame implements Serializable {
         lblTituloSeccionProd.setForeground(COLOR_OSCURO);
         panel.add(lblTituloSeccionProd, BorderLayout.NORTH);
 
-        String[] columnas = {"Nombre", "Descripción", "Precio"};
+        String[] columnas = {"ID", "Nombre", "Descripción", "Stock", "Precio"};
         modeloProductos = new DefaultTableModel(new Object[][]{}, columnas) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -333,16 +269,6 @@ public class FormAdmin extends JFrame implements Serializable {
 
         tablaProductos = new JTable(modeloProductos);
         estilizarTabla(tablaProductos);
-
-        tablaProductos.getSelectionModel().addListSelectionListener((ListSelectionEvent e) -> {
-            if (!e.getValueIsAdjusting()) {
-                int fila = tablaProductos.getSelectedRow();
-                if (fila != -1) {
-                    String nombreProd = modeloProductos.getValueAt(fila, 0).toString();
-                    productoEditando = buscarProductoPorNombreYCategoria(nombreProd, categoriaActual);
-                }
-            }
-        });
 
         JScrollPane scroll = new JScrollPane(tablaProductos);
         scroll.getViewport().setBackground(COLOR_BLANCO);
@@ -358,8 +284,8 @@ public class FormAdmin extends JFrame implements Serializable {
                 JOptionPane.showMessageDialog(this, "Seleccione un producto de la tabla para editar.");
                 return;
             }
-            String nombreProd = modeloProductos.getValueAt(fila, 0).toString();
-            Producto prod = buscarProductoPorNombreYCategoria(nombreProd, categoriaActual);
+            int idProd = Integer.parseInt(modeloProductos.getValueAt(fila, 0).toString());
+            Producto prod = buscarProductoEnCache(idProd);
             if (prod != null) {
                 abrirFormProducto(prod);
             }
@@ -372,12 +298,8 @@ public class FormAdmin extends JFrame implements Serializable {
                 JOptionPane.showMessageDialog(this, "Seleccione un producto de la tabla para eliminar.");
                 return;
             }
-            String nombreProd = modeloProductos.getValueAt(fila, 0).toString();
-            Producto prod = buscarProductoPorNombreYCategoria(nombreProd, categoriaActual);
-            if (prod != null) {
-                LISTA_PRODUCTOS.remove(prod);
-                cargarTablaProductos();
-            }
+            int idProd = Integer.parseInt(modeloProductos.getValueAt(fila, 0).toString());
+            eliminarProductoEnBD(idProd);
         });
 
         JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -406,7 +328,7 @@ public class FormAdmin extends JFrame implements Serializable {
         JPanel tarjeta = new JPanel();
         tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
         tarjeta.setBackground(COLOR_BLANCO);
-        tarjeta.setPreferredSize(new Dimension(410, 445));
+        tarjeta.setPreferredSize(new Dimension(420, 500));
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
                 new TitledBorder(BorderFactory.createLineBorder(COLOR_BORDE, 1), "Datos del Producto"),
                 new EmptyBorder(14, 18, 14, 18)
@@ -423,7 +345,7 @@ public class FormAdmin extends JFrame implements Serializable {
         txtFormDescProd.setLineWrap(true);
         txtFormDescProd.setWrapStyleWord(true);
         JScrollPane scrollDesc = new JScrollPane(txtFormDescProd);
-        scrollDesc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 76));
+        scrollDesc.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
         scrollDesc.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel lblPrecio = crearLabelCampo("Precio");
@@ -431,13 +353,14 @@ public class FormAdmin extends JFrame implements Serializable {
         txtFormPrecioProd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         txtFormPrecioProd.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        JLabel lblStock = crearLabelCampo("Stock inicial");
+        txtFormStockProd = new JTextField("10");
+        txtFormStockProd.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        txtFormStockProd.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         JLabel lblCat = crearLabelCampo("Categoría");
         cmbFormCategoriaProd = new JComboBox<>(new String[]{
-            "Seleccione la categoría",
-            "Bebidas",
-            "Entradas",
-            "Platos Fuertes",
-            "Postres"
+            "Seleccione la categoría", "Bebidas", "Entradas", "Platos Fuertes", "Postres"
         });
         cmbFormCategoriaProd.setFont(new Font("Arial", Font.PLAIN, 12));
         cmbFormCategoriaProd.setBackground(COLOR_BLANCO);
@@ -463,22 +386,27 @@ public class FormAdmin extends JFrame implements Serializable {
         tarjeta.add(lblNombre);
         tarjeta.add(Box.createVerticalStrut(4));
         tarjeta.add(txtFormNombreProd);
-        tarjeta.add(Box.createVerticalStrut(12));
+        tarjeta.add(Box.createVerticalStrut(10));
 
         tarjeta.add(lblDesc);
         tarjeta.add(Box.createVerticalStrut(4));
         tarjeta.add(scrollDesc);
-        tarjeta.add(Box.createVerticalStrut(12));
+        tarjeta.add(Box.createVerticalStrut(10));
 
         tarjeta.add(lblPrecio);
         tarjeta.add(Box.createVerticalStrut(4));
         tarjeta.add(txtFormPrecioProd);
-        tarjeta.add(Box.createVerticalStrut(12));
+        tarjeta.add(Box.createVerticalStrut(10));
+
+        tarjeta.add(lblStock);
+        tarjeta.add(Box.createVerticalStrut(4));
+        tarjeta.add(txtFormStockProd);
+        tarjeta.add(Box.createVerticalStrut(10));
 
         tarjeta.add(lblCat);
         tarjeta.add(Box.createVerticalStrut(4));
         tarjeta.add(cmbFormCategoriaProd);
-        tarjeta.add(Box.createVerticalStrut(18));
+        tarjeta.add(Box.createVerticalStrut(16));
 
         tarjeta.add(panelBotones);
 
@@ -504,6 +432,7 @@ public class FormAdmin extends JFrame implements Serializable {
             txtFormNombreProd.setText("");
             txtFormDescProd.setText("");
             txtFormPrecioProd.setText("");
+            txtFormStockProd.setText("10");
             cmbFormCategoriaProd.setSelectedItem(categoriaActual);
         } else {
             lblTituloFormProd.setText("Editar Producto");
@@ -511,6 +440,7 @@ public class FormAdmin extends JFrame implements Serializable {
             txtFormNombreProd.setText(existente.getNombre());
             txtFormDescProd.setText(existente.getDescripcion() != null ? existente.getDescripcion() : "");
             txtFormPrecioProd.setText(String.valueOf(existente.getPrecio()));
+            txtFormStockProd.setText(String.valueOf(existente.getStock()));
             String catProd = (existente.getCategoria() != null) ? existente.getCategoria().getNombre() : categoriaActual;
             cmbFormCategoriaProd.setSelectedItem(catProd);
         }
@@ -522,6 +452,7 @@ public class FormAdmin extends JFrame implements Serializable {
         String nombre = txtFormNombreProd.getText().trim();
         String descripcion = txtFormDescProd.getText().trim();
         String precioTexto = txtFormPrecioProd.getText().trim();
+        String stockTexto = txtFormStockProd.getText().trim();
         String categoriaElegida = cmbFormCategoriaProd.getSelectedItem().toString();
 
         if ("Seleccione la categoría".equals(categoriaElegida)) {
@@ -531,62 +462,105 @@ public class FormAdmin extends JFrame implements Serializable {
 
         try {
             double precio = Double.parseDouble(precioTexto);
+            int stock = Integer.parseInt(stockTexto);
             Categoria catObj = new Categoria(0, categoriaElegida);
 
-            if (productoEditando == null) {
-                Producto nuevo = new Producto(nombre, precio);
-                nuevo.setId(generarSiguienteIdProducto());
-                nuevo.setDescripcion(descripcion);
-                nuevo.setDisponibilidad(true);
-                nuevo.setCategoria(catObj);
-                nuevo.validar();
-                LISTA_PRODUCTOS.add(nuevo);
-            } else {
-                productoEditando.setNombre(nombre);
-                productoEditando.setDescripcion(descripcion);
-                productoEditando.setPrecio(precio);
-                productoEditando.setCategoria(catObj);
-                productoEditando.validar();
+            Producto objetivo = (productoEditando == null) ? new Producto(nombre, precio) : productoEditando;
+            if (productoEditando != null) {
+                objetivo.setNombre(nombre);
+                objetivo.setPrecio(precio);
             }
+            objetivo.setDescripcion(descripcion);
+            objetivo.setStock(stock);
+            objetivo.setDisponibilidad(stock > 0);
+            objetivo.setCategoria(catObj);
+            objetivo.validar();
 
-            productoEditando = null;
-            mostrarCategoriaProductos(categoriaElegida);
+            boolean esNuevo = (productoEditando == null);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    if (esNuevo) {
+                        productoDAO.insertar(objetivo);
+                    } else {
+                        productoDAO.actualizar(objetivo);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        productoEditando = null;
+                        mostrarCategoriaProductos(categoriaElegida);
+                    } catch (Exception ex) {
+                        mostrarErrorDAO("No se pudo guardar el producto", ex);
+                    }
+                }
+            }.execute();
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Ingrese un precio numérico válido.");
+            JOptionPane.showMessageDialog(this, "Ingrese valores numéricos válidos para precio y stock.");
         } catch (ValidacionException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage());
         }
+    }
+
+    private void eliminarProductoEnBD(int idProd) {
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                return productoDAO.eliminar(idProd);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    if (get()) {
+                        cargarTablaProductos();
+                    }
+                } catch (Exception ex) {
+                    mostrarErrorDAO("No se pudo eliminar el producto", ex);
+                }
+            }
+        }.execute();
     }
 
     private void cargarTablaProductos() {
         if (modeloProductos == null) {
             return;
         }
-        modeloProductos.setRowCount(0);
-
-        List<Producto> filtrados = new ArrayList<>();
-        for (Producto p : LISTA_PRODUCTOS) {
-            String nombreCat = (p.getCategoria() != null) ? p.getCategoria().getNombre() : "";
-            if (nombreCat.equalsIgnoreCase(categoriaActual)) {
-                filtrados.add(p);
+        new SwingWorker<List<Producto>, Void>() {
+            @Override
+            protected List<Producto> doInBackground() throws Exception {
+                return productoDAO.listarPorCategoria(categoriaActual);
             }
-        }
 
-        Collections.sort(filtrados, Comparator.comparing(Producto::getNombre, String.CASE_INSENSITIVE_ORDER));
-
-        for (Producto p : filtrados) {
-            modeloProductos.addRow(new Object[]{
-                p.getNombre(),
-                p.getDescripcion() != null ? p.getDescripcion() : "",
-                String.format("%.2f", p.getPrecio())
-            });
-        }
+            @Override
+            protected void done() {
+                try {
+                    productosCache = get();
+                    productosCache.sort(Comparator.comparing(Producto::getNombre, String.CASE_INSENSITIVE_ORDER));
+                    modeloProductos.setRowCount(0);
+                    for (Producto p : productosCache) {
+                        modeloProductos.addRow(new Object[]{
+                            p.getId(),
+                            p.getNombre(),
+                            p.getDescripcion() != null ? p.getDescripcion() : "",
+                            p.getStock(),
+                            String.format("%.2f", p.getPrecio())
+                        });
+                    }
+                } catch (Exception ex) {
+                    mostrarErrorDAO("Error al cargar productos desde la BD", ex);
+                }
+            }
+        }.execute();
     }
 
-    private Producto buscarProductoPorNombreYCategoria(String nombre, String categoria) {
-        for (Producto p : LISTA_PRODUCTOS) {
-            String cat = (p.getCategoria() != null) ? p.getCategoria().getNombre() : "";
-            if (p.getNombre().equals(nombre) && cat.equalsIgnoreCase(categoria)) {
+    private Producto buscarProductoEnCache(int idProd) {
+        for (Producto p : productosCache) {
+            if (p.getId() == idProd) {
                 return p;
             }
         }
@@ -603,7 +577,7 @@ public class FormAdmin extends JFrame implements Serializable {
         lblTitulo.setForeground(COLOR_OSCURO);
         panel.add(lblTitulo, BorderLayout.NORTH);
 
-        String[] columnas = {"Identificación", "Nombre", "Puesto"};
+        String[] columnas = {"Identificación", "Nombre", "Correo", "Puesto", "Estado"};
         modeloEmpleados = new DefaultTableModel(new Object[][]{}, columnas) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -629,8 +603,23 @@ public class FormAdmin extends JFrame implements Serializable {
                     int id = Integer.parseInt(idTexto.trim());
                     Usuario nuevo = new Usuario(id, nombre.trim(), correo.trim(), "1234", puesto.trim(), true);
                     nuevo.validar();
-                    LISTA_EMPLEADOS.add(nuevo);
-                    cargarTablaEmpleados();
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            usuarioDAO.insertar(nuevo);
+                            return null;
+                        }
+
+                        @Override
+                        protected void done() {
+                            try {
+                                get();
+                                cargarTablaEmpleados();
+                            } catch (Exception ex) {
+                                mostrarErrorDAO("No se pudo registrar el empleado", ex);
+                            }
+                        }
+                    }.execute();
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "La identificación debe ser numérica.");
                 } catch (ValidacionException ex) {
@@ -639,16 +628,30 @@ public class FormAdmin extends JFrame implements Serializable {
             }
         });
 
-        JButton btnEliminarEmp = new JButton("Eliminar Seleccionado");
+        JButton btnEliminarEmp = new JButton("Desactivar Seleccionado");
         btnEliminarEmp.addActionListener(e -> {
             int fila = tablaEmpleados.getSelectedRow();
             if (fila == -1) {
-                JOptionPane.showMessageDialog(this, "Seleccione un empleado de la tabla para eliminar.");
+                JOptionPane.showMessageDialog(this, "Seleccione un empleado de la tabla.");
                 return;
             }
             int idEmp = Integer.parseInt(modeloEmpleados.getValueAt(fila, 0).toString());
-            LISTA_EMPLEADOS.removeIf(u -> u.getId() == idEmp);
-            cargarTablaEmpleados();
+            new SwingWorker<Boolean, Void>() {
+                @Override
+                protected Boolean doInBackground() throws Exception {
+                    return usuarioDAO.eliminar(idEmp);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        cargarTablaEmpleados();
+                    } catch (Exception ex) {
+                        mostrarErrorDAO("No se pudo actualizar el estado del empleado", ex);
+                    }
+                }
+            }.execute();
         });
 
         JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -664,15 +667,31 @@ public class FormAdmin extends JFrame implements Serializable {
         if (modeloEmpleados == null) {
             return;
         }
-        modeloEmpleados.setRowCount(0);
+        new SwingWorker<List<Usuario>, Void>() {
+            @Override
+            protected List<Usuario> doInBackground() throws Exception {
+                return usuarioDAO.listar();
+            }
 
-        for (Usuario u : LISTA_EMPLEADOS) {
-            modeloEmpleados.addRow(new Object[]{
-                u.getId(),
-                u.getNombre(),
-                u.getRol()
-            });
-        }
+            @Override
+            protected void done() {
+                try {
+                    List<Usuario> lista = get();
+                    modeloEmpleados.setRowCount(0);
+                    for (Usuario u : lista) {
+                        modeloEmpleados.addRow(new Object[]{
+                            u.getId(),
+                            u.getNombre(),
+                            u.getCorreo(),
+                            u.getRol(),
+                            u.isEstado() ? "Activo" : "Inactivo"
+                        });
+                    }
+                } catch (Exception ex) {
+                    mostrarErrorDAO("Error al cargar empleados desde la BD", ex);
+                }
+            }
+        }.execute();
     }
 
     private JPanel crearPanelMesas() {
@@ -685,7 +704,7 @@ public class FormAdmin extends JFrame implements Serializable {
         lblTitulo.setForeground(COLOR_OSCURO);
         panel.add(lblTitulo, BorderLayout.NORTH);
 
-        String[] columnas = {"# de Mesa", "Capacidad"};
+        String[] columnas = {"# de Mesa", "Capacidad", "Estado"};
         modeloMesas = new DefaultTableModel(new Object[][]{}, columnas) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -702,7 +721,7 @@ public class FormAdmin extends JFrame implements Serializable {
 
         JButton btnAgregarMesa = crearBotonNaranja("+ Agregar Mesa");
         btnAgregarMesa.addActionListener(e -> {
-            String numTexto = JOptionPane.showInputDialog(this, "# de Mesa:", LISTA_MESAS.size() + 1);
+            String numTexto = JOptionPane.showInputDialog(this, "# de Mesa:", String.valueOf(modeloMesas.getRowCount() + 1));
             String capTexto = JOptionPane.showInputDialog(this, "Capacidad:", "4");
             if (numTexto != null && capTexto != null) {
                 try {
@@ -710,8 +729,23 @@ public class FormAdmin extends JFrame implements Serializable {
                     int cap = Integer.parseInt(capTexto.trim());
                     Mesa nuevaMesa = new Mesa(num, cap, "Disponible");
                     nuevaMesa.validar();
-                    LISTA_MESAS.add(nuevaMesa);
-                    cargarTablaMesas();
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            mesaDAO.insertar(nuevaMesa);
+                            return null;
+                        }
+
+                        @Override
+                        protected void done() {
+                            try {
+                                get();
+                                cargarTablaMesas();
+                            } catch (Exception ex) {
+                                mostrarErrorDAO("No se pudo registrar la mesa", ex);
+                            }
+                        }
+                    }.execute();
                 } catch (NumberFormatException ex) {
                     JOptionPane.showMessageDialog(this, "Ingrese números válidos.");
                 } catch (ValidacionException ex) {
@@ -724,12 +758,26 @@ public class FormAdmin extends JFrame implements Serializable {
         btnEliminarMesa.addActionListener(e -> {
             int fila = tablaMesas.getSelectedRow();
             if (fila == -1) {
-                JOptionPane.showMessageDialog(this, "Seleccione una mesa de la tabla para eliminar.");
+                JOptionPane.showMessageDialog(this, "Seleccione una mesa de la tabla.");
                 return;
             }
             int numMesa = Integer.parseInt(modeloMesas.getValueAt(fila, 0).toString());
-            LISTA_MESAS.removeIf(m -> m.getNumeroMesa() == numMesa);
-            cargarTablaMesas();
+            new SwingWorker<Boolean, Void>() {
+                @Override
+                protected Boolean doInBackground() throws Exception {
+                    return mesaDAO.eliminar(numMesa);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        get();
+                        cargarTablaMesas();
+                    } catch (Exception ex) {
+                        mostrarErrorDAO("No se pudo eliminar la mesa", ex);
+                    }
+                }
+            }.execute();
         });
 
         JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -745,14 +793,35 @@ public class FormAdmin extends JFrame implements Serializable {
         if (modeloMesas == null) {
             return;
         }
-        modeloMesas.setRowCount(0);
+        new SwingWorker<List<Mesa>, Void>() {
+            @Override
+            protected List<Mesa> doInBackground() throws Exception {
+                return mesaDAO.listar();
+            }
 
-        for (Mesa m : LISTA_MESAS) {
-            modeloMesas.addRow(new Object[]{
-                m.getNumeroMesa(),
-                m.getCapacidad()
-            });
-        }
+            @Override
+            protected void done() {
+                try {
+                    List<Mesa> lista = get();
+                    modeloMesas.setRowCount(0);
+                    for (Mesa m : lista) {
+                        modeloMesas.addRow(new Object[]{
+                            m.getNumeroMesa(),
+                            m.getCapacidad(),
+                            m.getEstado()
+                        });
+                    }
+                } catch (Exception ex) {
+                    mostrarErrorDAO("Error al cargar mesas desde la BD", ex);
+                }
+            }
+        }.execute();
+    }
+
+    private void mostrarErrorDAO(String prefijo, Exception ex) {
+        Throwable causa = (ex.getCause() != null) ? ex.getCause() : ex;
+        String mensaje = (causa.getMessage() != null) ? causa.getMessage() : ex.getMessage();
+        JOptionPane.showMessageDialog(this, prefijo + ":\n" + mensaje, "Error de base de datos", JOptionPane.ERROR_MESSAGE);
     }
 
     private void estilizarTabla(JTable tabla) {
@@ -771,14 +840,8 @@ public class FormAdmin extends JFrame implements Serializable {
         btn.setForeground(COLOR_BLANCO);
         btn.setFont(new Font("Arial", Font.BOLD, 12));
         btn.setFocusPainted(false);
-        btn.setPreferredSize(new Dimension(170, 36));
+        btn.setPreferredSize(new Dimension(180, 36));
         return btn;
-    }
-
-    private static final List<Pedido> LISTA_PEDIDOS = new ArrayList<>();
-
-    public static List<Pedido> getPedidos() {
-        return LISTA_PEDIDOS;
     }
 
     public static void main(String[] args) {

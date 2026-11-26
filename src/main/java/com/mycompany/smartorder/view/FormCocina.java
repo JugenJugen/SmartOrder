@@ -8,12 +8,16 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
+import com.mycompany.smartorder.dao.PedidoDAO;
 import com.mycompany.smartorder.model.*;
 import java.awt.*;
+import java.util.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class FormCocina extends JFrame {
+
+    private final PedidoDAO pedidoDAO = new PedidoDAO();
 
     private JTabbedPane tabEstadosCocina;
     private JTable tablaPendientes, tablaEnPreparacion, tablaListos, tablaEntregados;
@@ -26,6 +30,7 @@ public class FormCocina extends JFrame {
     private static final Color COLOR_NARANJA = new Color(230, 126, 34);
     private static final Color COLOR_VERDE = new Color(46, 204, 113);
     private static final Color COLOR_AZUL = new Color(52, 152, 219);
+    private static final Color COLOR_ROJO = new Color(192, 57, 43);
     private static final Color COLOR_OSCURO = new Color(33, 43, 54);
 
     public FormCocina() {
@@ -37,7 +42,6 @@ public class FormCocina extends JFrame {
         setJMenuBar(crearBarraNavegacion(true));
         getContentPane().setBackground(COLOR_FONDO);
 
-        // --- 1. ENCABEZADO SUPERIOR ---
         JPanel panelTop = new JPanel(new BorderLayout());
         panelTop.setBackground(COLOR_OSCURO);
         panelTop.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
@@ -70,7 +74,6 @@ public class FormCocina extends JFrame {
         panelTop.add(btnActualizar, BorderLayout.EAST);
         add(panelTop, BorderLayout.NORTH);
 
-        // --- 2. MODELOS Y PESTAÑAS DE ESTADOS ---
         String[] columnas = {"# de Pedido", "Mesa / Tipo", "Detalle de Productos", "Estado"};
 
         modeloPendientes = crearModeloNoEditable(columnas);
@@ -90,15 +93,15 @@ public class FormCocina extends JFrame {
 
         tabEstadosCocina.add(
                 "Pendientes",
-                crearPanelEstado(tablaPendientes, "En preparación", "Marcar En Preparación", COLOR_NARANJA)
+                crearPanelEstado(tablaPendientes, PedidoDAO.EN_PREPARACION, "Marcar En Preparación", COLOR_NARANJA, true)
         );
         tabEstadosCocina.add(
                 "En Preparación",
-                crearPanelEstado(tablaEnPreparacion, "Listo", "Marcar Listo", COLOR_AZUL)
+                crearPanelEstado(tablaEnPreparacion, PedidoDAO.LISTO, "Marcar Listo", COLOR_AZUL, true)
         );
         tabEstadosCocina.add(
                 "Listos",
-                crearPanelEstado(tablaListos, "Entregado", "Marcar Entregado", COLOR_VERDE)
+                crearPanelEstado(tablaListos, PedidoDAO.ENTREGADO, "Marcar Entregado", COLOR_VERDE, false)
         );
 
         JPanel panelEntregados = new JPanel(new BorderLayout());
@@ -106,8 +109,6 @@ public class FormCocina extends JFrame {
         panelEntregados.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelEntregados.add(new JScrollPane(tablaEntregados), BorderLayout.CENTER);
         tabEstadosCocina.add("Entregados", panelEntregados);
-
-        tabEstadosCocina.addChangeListener(e -> cargarPedidosEnTablas());
 
         add(tabEstadosCocina, BorderLayout.CENTER);
 
@@ -178,7 +179,7 @@ public class FormCocina extends JFrame {
         };
     }
 
-    private JPanel crearPanelEstado(JTable tabla, String siguienteEstado, String textoBoton, Color colorBoton) {
+    private JPanel crearPanelEstado(JTable tabla, String siguienteEstado, String textoBoton, Color colorBoton, boolean permitirCancelar) {
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.setBackground(COLOR_BLANCO);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -187,6 +188,20 @@ public class FormCocina extends JFrame {
         scroll.getViewport().setBackground(COLOR_BLANCO);
         panel.add(scroll, BorderLayout.CENTER);
 
+        JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        panelSur.setBackground(COLOR_BLANCO);
+
+        if (permitirCancelar) {
+            JButton btnCancelar = new JButton("Cancelar Pedido");
+            btnCancelar.setBackground(COLOR_ROJO);
+            btnCancelar.setForeground(COLOR_BLANCO);
+            btnCancelar.setFont(new Font("Arial", Font.BOLD, 12));
+            btnCancelar.setFocusPainted(false);
+            btnCancelar.setPreferredSize(new Dimension(150, 35));
+            btnCancelar.addActionListener(e -> avanzarEstadoPedido(tabla, PedidoDAO.CANCELADO));
+            panelSur.add(btnCancelar);
+        }
+
         JButton btnAvanzar = new JButton(textoBoton);
         btnAvanzar.setBackground(colorBoton);
         btnAvanzar.setForeground(COLOR_BLANCO);
@@ -194,10 +209,8 @@ public class FormCocina extends JFrame {
         btnAvanzar.setFocusPainted(false);
         btnAvanzar.setPreferredSize(new Dimension(190, 35));
         btnAvanzar.addActionListener(e -> avanzarEstadoPedido(tabla, siguienteEstado));
-
-        JPanel panelSur = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        panelSur.setBackground(COLOR_BLANCO);
         panelSur.add(btnAvanzar);
+
         panel.add(panelSur, BorderLayout.SOUTH);
 
         return panel;
@@ -217,14 +230,39 @@ public class FormCocina extends JFrame {
 
         int idPedido = Integer.parseInt(tabla.getValueAt(fila, 0).toString());
 
-        for (Pedido p : GestorPedidos.getPedidos()) {
-            if (p.getId() == idPedido) {
-                p.setEstado(siguienteEstado);
-                break;
+        new SwingWorker<Boolean, Void>() {
+            @Override
+            protected Boolean doInBackground() throws Exception {
+                return pedidoDAO.actualizarEstado(idPedido, siguienteEstado, null);
             }
-        }
 
-        cargarPedidosEnTablas();
+            @Override
+            protected void done() {
+                try {
+                    if (get()) {
+                        FormAuditoriaLogs.registrarEvento(
+                                "COCINA",
+                                "Cocina",
+                                "Pedido #" + idPedido + " cambió a estado: " + siguienteEstado
+                        );
+                        cargarPedidosEnTablas();
+                    } else {
+                        JOptionPane.showMessageDialog(
+                                FormCocina.this,
+                                "No se encontró el pedido #" + idPedido + " en la base de datos."
+                        );
+                    }
+                } catch (Exception ex) {
+                    Throwable causa = (ex.getCause() != null) ? ex.getCause() : ex;
+                    JOptionPane.showMessageDialog(
+                            FormCocina.this,
+                            "Error al actualizar el estado en BD:\n" + causa.getMessage(),
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                }
+            }
+        }.execute();
     }
 
     public void cargarPedidosEnTablas() {
@@ -233,64 +271,89 @@ public class FormCocina extends JFrame {
             return;
         }
 
-        modeloPendientes.setRowCount(0);
-        modeloEnPreparacion.setRowCount(0);
-        modeloListos.setRowCount(0);
-        modeloEntregados.setRowCount(0);
+        new SwingWorker<java.util.List<Pedido>, Void>() {
+            @Override
+            protected java.util.List<Pedido> doInBackground() throws Exception {
+                return pedidoDAO.listarTodos();
+            }
 
-        for (Pedido p : GestorPedidos.getPedidos()) {
-            StringBuilder detalleTexto = new StringBuilder();
-            for (DetallePedido det : p.getDetalles()) {
-                String nombreProd = (det.getProducto() != null && det.getProducto().getNombre() != null)
-                        ? det.getProducto().getNombre()
-                        : "Producto";
+            @Override
+            protected void done() {
+                java.util.List<Pedido> pedidos;
+                boolean falloBD = false;
+                String mensajeError = "";
 
-                detalleTexto.append(det.getCantidad()).append("x ").append(nombreProd);
-                if (det.getObservacion() != null && !det.getObservacion().isBlank()) {
-                    detalleTexto.append(" [").append(det.getObservacion()).append("]");
+                try {
+                    pedidos = get();
+                } catch (Exception ex) {
+                    pedidos = java.util.Collections.emptyList();
+                    falloBD = true;
+                    Throwable causa = (ex.getCause() != null) ? ex.getCause() : ex;
+                    mensajeError = (causa.getMessage() != null) ? causa.getMessage() : ex.getMessage();
                 }
-                detalleTexto.append(" | ");
+
+                modeloPendientes.setRowCount(0);
+                modeloEnPreparacion.setRowCount(0);
+                modeloListos.setRowCount(0);
+                modeloEntregados.setRowCount(0);
+
+                for (Pedido p : pedidos) {
+                    StringBuilder detalleTexto = new StringBuilder();
+                    for (DetallePedido det : p.getDetalles()) {
+                        String nombreProd = (det.getProducto() != null && det.getProducto().getNombre() != null)
+                                ? det.getProducto().getNombre()
+                                : "Producto";
+
+                        detalleTexto.append(det.getCantidad()).append("x ").append(nombreProd);
+                        if (det.getObservacion() != null && !det.getObservacion().isBlank()) {
+                            detalleTexto.append(" [").append(det.getObservacion()).append("]");
+                        }
+                        detalleTexto.append(" | ");
+                    }
+
+                    String textoDetalle = detalleTexto.length() > 3
+                            ? detalleTexto.substring(0, detalleTexto.length() - 3)
+                            : "";
+
+                    String tipoPedido = (p.getTipoPedido() != null && !p.getTipoPedido().isBlank())
+                            ? p.getTipoPedido().trim()
+                            : "Local";
+
+                    String textoMesa = (p.getMesa() != null)
+                            ? "Mesa #" + String.format("%02d", p.getMesa().getNumeroMesa()) + " (" + tipoPedido + ")"
+                            : "Sin mesa (" + tipoPedido + ")";
+
+                    Object[] fila = {
+                        p.getId(),
+                        textoMesa,
+                        textoDetalle,
+                        p.getEstado()
+                    };
+
+                    String estado = (p.getEstado() != null) ? p.getEstado().trim() : "Recibido";
+                    if ("Recibido".equalsIgnoreCase(estado) || "Pendiente".equalsIgnoreCase(estado)) {
+                        modeloPendientes.addRow(fila);
+                    } else if ("En preparación".equalsIgnoreCase(estado) || "En preparacion".equalsIgnoreCase(estado)) {
+                        modeloEnPreparacion.addRow(fila);
+                    } else if ("Listo".equalsIgnoreCase(estado)) {
+                        modeloListos.addRow(fila);
+                    } else if ("Entregado".equalsIgnoreCase(estado)) {
+                        modeloEntregados.addRow(fila);
+                    }
+                }
+
+                if (lblResumenCocina != null) {
+                    if (falloBD) {
+                        lblResumenCocina.setText("Error al consultar BD: " + mensajeError);
+                    } else {
+                        lblResumenCocina.setText("Pedidos registrados en BD: " + pedidos.size());
+                    }
+                }
             }
-
-            String textoDetalle = detalleTexto.length() > 3
-                    ? detalleTexto.substring(0, detalleTexto.length() - 3)
-                    : "";
-
-            String tipoPedido = (p.getTipoPedido() != null && !p.getTipoPedido().isBlank())
-                    ? p.getTipoPedido().trim()
-                    : "Local";
-
-            String textoMesa = (p.getMesa() != null)
-                    ? "Mesa #" + String.format("%02d", p.getMesa().getNumeroMesa()) + " (" + tipoPedido + ")"
-                    : "Sin mesa (" + tipoPedido + ")";
-
-            Object[] fila = {
-                p.getId(),
-                textoMesa,
-                textoDetalle,
-                p.getEstado()
-            };
-
-            String estado = (p.getEstado() != null) ? p.getEstado().trim() : "Recibido";
-            if ("Recibido".equalsIgnoreCase(estado) || "Pendiente".equalsIgnoreCase(estado)) {
-                modeloPendientes.addRow(fila);
-            } else if ("En preparación".equalsIgnoreCase(estado) || "En preparacion".equalsIgnoreCase(estado)) {
-                modeloEnPreparacion.addRow(fila);
-            } else if ("Listo".equalsIgnoreCase(estado)) {
-                modeloListos.addRow(fila);
-            } else if ("Entregado".equalsIgnoreCase(estado)) {
-                modeloEntregados.addRow(fila);
-            }
-        }
-
-        if (lblResumenCocina != null) {
-            lblResumenCocina.setText("Pedidos registrados: " + GestorPedidos.getPedidos().size());
-        }
+        }.execute();
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new FormCocina().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new FormCocina().setVisible(true));
     }
 }

@@ -8,11 +8,12 @@ package com.mycompany.smartorder.view;
  *
  * @author angel
  */
+import com.mycompany.smartorder.dao.UsuarioDAO;
+import com.mycompany.smartorder.excepciones.DAOException;
 import com.mycompany.smartorder.model.Usuario;
 import java.awt.*;
 import java.util.Arrays;
 import javax.swing.*;
-
 public class FormLogin extends JFrame {
 
     private JTextField txtEmail;
@@ -97,25 +98,41 @@ public class FormLogin extends JFrame {
             return;
         }
 
+        // 1. Intentar autenticación real contra SQL Server (UsuarioDAO con SHA-256)
+        try {
+            UsuarioDAO usuarioDAO = new UsuarioDAO();
+            Usuario autenticado = usuarioDAO.autenticar(usuario, password);
+            if (autenticado != null) {
+                FormAuditoriaLogs.registrarEvento("INFO", "Login", "Acceso BD exitoso: " + autenticado.getNombre());
+                abrirVistaPorRol(autenticado.getRol(), "Bienvenido/a " + autenticado.getNombre() + ".");
+                return;
+            }
+        } catch (DAOException ex) {
+            System.err.println("BD no disponible en Login, usando respaldo local: " + ex.getMessage());
+        }
+
         String usuarioNormalizado = usuario.toLowerCase();
 
-        // 1. Credenciales base rápidas
+        // 2. Credenciales base rápidas (respaldo local)
         if ("1234".equals(password)) {
             if ("admin@smartorder.com".equals(usuarioNormalizado) || "admin".equals(usuarioNormalizado)) {
+                FormAuditoriaLogs.registrarEvento("INFO", "Login", "Acceso local: Administrador");
                 abrirVistaPorRol("Administrador", "Bienvenido Administrador.");
                 return;
             }
             if ("cocina@smartorder.com".equals(usuarioNormalizado) || "cocina".equals(usuarioNormalizado)) {
+                FormAuditoriaLogs.registrarEvento("INFO", "Login", "Acceso local: Cocina");
                 abrirVistaPorRol("Cocina", "Bienvenido a Estación de Cocina.");
                 return;
             }
             if ("cliente@smartorder.com".equals(usuarioNormalizado) || "cliente".equals(usuarioNormalizado)) {
+                FormAuditoriaLogs.registrarEvento("INFO", "Login", "Acceso local: Atención/Cliente");
                 abrirVistaPorRol("Atención", "Bienvenido a Toma de Pedidos.");
                 return;
             }
         }
 
-        // 2. Empleados registrados o editados en FormAdmin
+        // 3. Empleados registrados en FormAdmin
         for (Usuario emp : FormAdmin.getEmpleados()) {
             if (emp.isEstado() && emp.getContraseña() != null && password.equals(emp.getContraseña())) {
                 boolean coincideCorreo = emp.getCorreo() != null
@@ -124,12 +141,14 @@ public class FormLogin extends JFrame {
                         && emp.getNombre().trim().equalsIgnoreCase(usuarioNormalizado);
 
                 if (coincideCorreo || coincideNombre) {
+                    FormAuditoriaLogs.registrarEvento("INFO", "Login", "Acceso local empleado: " + emp.getNombre());
                     abrirVistaPorRol(emp.getRol(), "Bienvenido/a " + emp.getNombre() + ".");
                     return;
                 }
             }
         }
 
+        FormAuditoriaLogs.registrarEvento("ERROR", "Login", "Intento fallido para usuario: " + usuario);
         JOptionPane.showMessageDialog(
                 this,
                 "Credenciales incorrectas o usuario inactivo.",

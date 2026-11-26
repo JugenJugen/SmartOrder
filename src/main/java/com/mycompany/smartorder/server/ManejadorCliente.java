@@ -5,10 +5,13 @@ import com.mycompany.smartorder.client.Response;
 import com.mycompany.smartorder.dao.MesaDAO;
 import com.mycompany.smartorder.dao.PedidoDAO;
 import com.mycompany.smartorder.excepciones.DAOException;
+import com.mycompany.smartorder.model.DetallePedido;
 import com.mycompany.smartorder.model.ItemPedido;
+import com.mycompany.smartorder.model.Pedido;
 import java.io.*;
 import java.net.Socket;
 import java.util.*;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -20,7 +23,6 @@ public class ManejadorCliente implements Runnable {
     private final MesaDAO mesas;
     private String tipoPunto;
     private int numeroPunto;
-    // Evita reprocesar el mismo requestId exitoso en esta sesión, hasta 256 IDs.
     private final Map<String, Response> confirmados = new LinkedHashMap<>();
 
     public ManejadorCliente(Socket socket, PedidoDAO pedidos, MesaDAO mesas) {
@@ -33,11 +35,9 @@ public class ManejadorCliente implements Runnable {
     public void run() {
         try (Socket cliente = socket) {
             cliente.setSoTimeout(300000);
-            // ClientConnector abre primero su ObjectOutputStream.
             try (ObjectInputStream in = new ObjectInputStream(cliente.getInputStream());
                  ObjectOutputStream out = new ObjectOutputStream(cliente.getOutputStream())) {
                 out.flush();
-                // Restringir clases recibidas. No sustituye autenticación ni TLS.
                 in.setObjectInputFilter(ObjectInputFilter.Config.createFilter(
                     "maxdepth=16;maxarray=10000;maxrefs=100000;maxbytes=8388608;"
                     + "com.mycompany.smartorder.client.Request;java.lang.String;"
@@ -55,7 +55,7 @@ public class ManejadorCliente implements Runnable {
                 }
             }
         } catch (EOFException e) {
-            // Desconexión normal: solamente termina este hilo.
+            // Desconexión normal
         } catch (IOException | ClassNotFoundException e) {
             LOG.log(Level.WARNING, "Conexión cerrada: " + identidad());
         } finally {
@@ -74,22 +74,30 @@ public class ManejadorCliente implements Runnable {
                     if (tipoPunto != null) throw new IllegalArgumentException("Sesión ya identificada");
                     String tipo = texto(p.get("tipo")).toUpperCase(Locale.ROOT);
                     int numero = enteroPositivo(p.get("numero"));
-                    if (!tipo.equals("MESA") && !tipo.equals("BARRA"))
+                    if (!tipo.equals("MESA") && !tipo.equals("BARRA") && !tipo.equals("COCINA"))
                         throw new IllegalArgumentException("Tipo de punto inválido");
                     tipoPunto = tipo;
                     numeroPunto = numero;
                     System.out.println(Thread.currentThread().getName() + " - Conectado: " + identidad());
                     return new Response(id, true, "Conectado como " + identidad(), null);
+
                 case "obtenerMesas":
                     exigirConexion();
                     return new Response(id, true, "Mesas", new ArrayList<>(mesas.listarNumerosDisponibles()));
+
                 case "crearPedido":
                     exigirConexion();
                     if (confirmados.containsKey(id)) return confirmados.get(id);
                     return crearPedido(id, p);
+
                 case "listarPedidos":
+                    exigirConexion();
+                    return listarPedidos(id);
+
                 case "actualizarEstado":
-                    return new Response(id, false, "Operación reservada: pendiente autenticación de personal", null);
+                    exigirConexion();
+                    return actualizarEstado(id, p);
+
                 default:
                     return new Response(id, false, "Acción no permitida", null);
             }
@@ -113,7 +121,6 @@ public class ManejadorCliente implements Runnable {
                 && enteroPositivo(p.get("mesa")) != numeroPunto)
             throw new IllegalArgumentException("La mesa no coincide con la sesión");
         String obs = p.get("observacion") == null ? "" : textoOpcional(p.get("observacion"));
-        // El controlador real usa lista; items es el nombre del servidor de prueba.
         Object datos = p.containsKey("lista") ? p.get("lista") : p.get("items");
         if (!(datos instanceof List<?>) || ((List<?>) datos).isEmpty())
             throw new IllegalArgumentException("Debe seleccionar productos");
@@ -126,7 +133,6 @@ public class ManejadorCliente implements Runnable {
             int cantidad = enteroPositivo(m.get("cantidad"));
             if (!nombres.add(nombre.toLowerCase(Locale.ROOT)))
                 throw new IllegalArgumentException("Agrupe las cantidades del mismo producto");
-            // El DAO obtiene el precio real de SQL Server, no del cliente.
             items.add(new ItemPedido(nombre, 0.0, cantidad));
         }
         System.out.println(Thread.currentThread().getName() + " - Procesando: " + identidad());
@@ -138,20 +144,62 @@ public class ManejadorCliente implements Runnable {
         return respuesta;
     }
 
+    private Response listarPedidos(String id) throws DAOException {
+        List<Pedido> lista = pedidos.listarTodos();
+        List resultado = new ArrayList<>();
+        for (Pedido ped : lista) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", ped.getId());
+            m.put("mesa", ped.getMesa() != null ? ped.getMesa().getNumeroMesa() : 0);
+            m.put("tipoPedido", ped.getTipoPedido());
+            m.put("estado", ped.getEstado());
+            m.put("total", ped.getTotal());
+
+            List detalles = new ArrayList<>();
+            for (DetallePedido d : ped.getDetalles()) {
+                Map<String, Object> dm = new HashMap<>();
+                dm.put("producto", d.getProducto() != null ? d.getProducto().getNombre() : "Producto");
+                dm.put("cantidad", d.getCantidad());
+                dm.put("precio", d.getPrecioUnitario());
+                dm.put("observacion", d.getObservacion());
+                detalles.add(dm);
+            }
+            m.put("items", detalles);
+            resultado.add(m);
+        }
+        return new Response(id, true, "Pedidos", resultado);
+    }
+
+    private Response actualizarEstado(String id, Map<String, Object> p) throws DAOException {
+        int pedidoId = enteroPositivo(p.get("pedidoId"));
+        String nuevoEstado = texto(p.get("nuevoEstado"));
+        boolean ok = pedidos.actualizarEstado(pedidoId, nuevoEstado, null);
+        if (!ok) {
+            return new Response(id, false, "No se encontró el pedido #" + pedidoId, null);
+        }
+        return new Response(id, true, "Estado actualizado", null);
+    }
+
     private void exigirConexion() {
         if (tipoPunto == null) throw new IllegalArgumentException("Identifique el punto primero");
     }
-    private String identidad() { return tipoPunto == null ? "sin identificar" : tipoPunto + " " + numeroPunto; }
+
+    private String identidad() {
+        return tipoPunto == null ? "sin identificar" : tipoPunto + " " + numeroPunto;
+    }
+
     private static int enteroPositivo(Object o) {
         if (!(o instanceof Integer) || (Integer) o <= 0)
             throw new IllegalArgumentException("Se requiere un entero positivo");
         return (Integer) o;
     }
+
     private static String texto(Object o) {
         String s = textoOpcional(o);
         if (s.isBlank()) throw new IllegalArgumentException("Texto obligatorio");
         return s;
     }
+
     private static String textoOpcional(Object o) {
         if (!(o instanceof String)) throw new IllegalArgumentException("Texto inválido");
         return ((String) o).trim();

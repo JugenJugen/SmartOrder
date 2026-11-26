@@ -29,13 +29,18 @@ public final class ConexionBD {
         try (InputStream in = ConexionBD.class.getResourceAsStream("/db.properties")) {
             if (in != null) {
                 props.load(in);
+            } else {
+                System.err.println("No se encontró /db.properties en el classpath.");
             }
         } catch (IOException e) {
-            System.err.println("No se pudo leer db.properties, se usan valores por defecto: " + e.getMessage());
+            System.err.println("Error al leer db.properties: " + e.getMessage());
         }
-        URL = props.getProperty("db.url", "jdbc:sqlserver://localhost:1433;databaseName=smartorder_db;encrypt=true;trustServerCertificate=true");
-        USUARIO = props.getProperty("db.usuario", "sa");
-        CONTRASENA = props.getProperty("db.contrasena", "");
+        URL = props.getProperty(
+                "db.url",
+                "jdbc:sqlserver://localhost:1433;databaseName=smartorder_db;encrypt=true;trustServerCertificate=true"
+        ).trim();
+        USUARIO = props.getProperty("db.usuario", "smartorder_app").trim();
+        CONTRASENA = props.getProperty("db.contrasena", "").trim();
     }
 
     private ConexionBD() { }
@@ -48,7 +53,6 @@ public final class ConexionBD {
         }
     }
 
-    /** Verifica rápidamente si la base de datos responde. */
     public static boolean probarConexion() {
         try (Connection con = getConexion()) {
             return con.isValid(3);

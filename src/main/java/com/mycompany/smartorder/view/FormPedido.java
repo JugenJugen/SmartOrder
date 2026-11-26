@@ -17,6 +17,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.table.DefaultTableModel;
+import com.mycompany.smartorder.dao.PedidoDAO;
+import com.mycompany.smartorder.excepciones.DAOException;
+import com.mycompany.smartorder.model.GestorPedidos;
 
 public class FormPedido extends JFrame {
 
@@ -260,42 +263,69 @@ public class FormPedido extends JFrame {
         }
     }
 
+    private List<Pedido> obtenerListaPedidos() {
+        try {
+            List<Pedido> desdeBD = new PedidoDAO().listarTodos();
+            if (desdeBD != null && !desdeBD.isEmpty()) {
+                return desdeBD;
+            }
+        } catch (DAOException ex) {
+            // Si no hay BD activa, usa la lista compartida en memoria
+        }
+        return GestorPedidos.getPedidos();
+    }
+
+    private Pedido buscarPedidoPorId(int id) {
+        List<Pedido> pedidos = obtenerListaPedidos();
+        if (pedidos == null) {
+            return null;
+        }
+        for (Pedido p : pedidos) {
+            if (p.getId() == id) {
+                return p;
+            }
+        }
+        return null;
+    }
+
     private void cargarPedidos() {
         modeloTabla.setRowCount(0);
-        List<Pedido> pedidos = FormAdmin.getPedidos();
+        List<Pedido> pedidos = obtenerListaPedidos();
         if (pedidos == null) {
             return;
         }
 
-        String filtroId = txtBuscarId.getText().trim();
-        String filtroMesa = (String) cmbFiltroMesa.getSelectedItem();
-        String filtroEstado = (String) cmbFiltroEstado.getSelectedItem();
+        String textoId = (txtBuscarId != null) ? txtBuscarId.getText().trim() : "";
+        String filtroMesa = (cmbFiltroMesa != null && cmbFiltroMesa.getSelectedItem() != null)
+                ? cmbFiltroMesa.getSelectedItem().toString() : "Todas";
+        String filtroEstado = (cmbFiltroEstado != null && cmbFiltroEstado.getSelectedItem() != null)
+                ? cmbFiltroEstado.getSelectedItem().toString() : "Todos";
 
         for (Pedido p : pedidos) {
-            String idStr = String.valueOf(p.getId());
-            if (!filtroId.isEmpty() && !idStr.contains(filtroId)) {
+            if (!textoId.isEmpty() && !String.valueOf(p.getId()).equals(textoId)) {
                 continue;
             }
 
             String ubicacion = (p.getMesa() != null)
                     ? "Mesa #" + p.getMesa().getNumeroMesa()
-                    : "Barra / Sin mesa";
+                    : "Para llevar / Barra";
 
-            if (filtroMesa != null && !"Todas".equals(filtroMesa)) {
-                if ("Para llevar / Barra".equals(filtroMesa) && p.getMesa() != null) {
-                    continue;
-                } else if (!"Para llevar / Barra".equals(filtroMesa) && !ubicacion.equals(filtroMesa)) {
-                    continue;
-                }
-            }
-
-            String estado = (p.getEstado() != null) ? p.getEstado() : "Recibido";
-            if (filtroEstado != null && !"Todos".equals(filtroEstado) && !estado.equalsIgnoreCase(filtroEstado)) {
+            if (!"Todas".equals(filtroMesa) && !ubicacion.equalsIgnoreCase(filtroMesa)) {
                 continue;
             }
 
-            String modalidad = (p.getMesa() != null) ? "Local" : "Para llevar";
-            double total = calcularTotal(p);
+            String estado = (p.getEstado() != null && !p.getEstado().isBlank())
+                    ? p.getEstado() : "Recibido";
+
+            if (!"Todos".equals(filtroEstado) && !estado.equalsIgnoreCase(filtroEstado)) {
+                continue;
+            }
+
+            String modalidad = (p.getTipoPedido() != null && !p.getTipoPedido().isBlank())
+                    ? p.getTipoPedido()
+                    : (p.getMesa() != null ? "Local" : "Para llevar");
+
+            double total = (p.getTotal() > 0) ? p.getTotal() : calcularTotal(p);
 
             modeloTabla.addRow(new Object[]{
                 p.getId(),
@@ -344,7 +374,7 @@ public class FormPedido extends JFrame {
         sb.append("--------------------------------------------------\n");
         txtDetalleOrden.setText(sb.toString());
 
-        double total = calcularTotal(seleccionado);
+        double total = (seleccionado.getTotal() > 0) ? seleccionado.getTotal() : calcularTotal(seleccionado);
         lblTotalPedido.setText(String.format("Total a pagar: ₡%.2f", total));
         lblEstadoPago.setText("Estado de pago: Pendiente de confirmación");
     }
@@ -390,19 +420,6 @@ public class FormPedido extends JFrame {
         JOptionPane.showMessageDialog(this,
                 "Pago simulado registrado con éxito para el Pedido #" + idPedido + " (" + medio + ").",
                 "Pago Confirmado", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private Pedido buscarPedidoPorId(int id) {
-        List<Pedido> pedidos = FormAdmin.getPedidos();
-        if (pedidos == null) {
-            return null;
-        }
-        for (Pedido p : pedidos) {
-            if (p.getId() == id) {
-                return p;
-            }
-        }
-        return null;
     }
 
     private double calcularTotal(Pedido p) {
